@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-signin",
   "description": "一个带数据库的签到插件",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "contributors": [
     "SLGSL5357 <slgls5357@gmail.com>"
   ],
@@ -23,7 +23,7 @@
     "plugin"
   ],
   "peerDependencies": {
-    "@koishijs/plugin-console": "5.6.0",
-    "koishi": "^4.12.3"
+    "@koishijs/plugin-console": "5.19.5",
+    "koishi": "^4.15.6"
   }
 }

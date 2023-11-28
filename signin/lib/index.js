@@ -21,9 +21,13 @@ exports.name = 'signin'; //插件名称 "签到"
 exports.using = [];
 exports.usage = `
 
-# signin v1.0.4 更新日志
+## signin v1.0.4 更新日志
 
 - 修复 配置文件每次签到积分不可修改,固定为10的bug
+
+## signin V1.0.5 更新日志
+
+- 新增 数据表用户名。可使用signin.name 指令修改
 
 ### 该插件将在'.koishi.db'中创建一个名为'user_sign_in'表,签到信息将会储存在该表中.
 `;
@@ -31,8 +35,9 @@ let _config; //定义一个_config等于Config 的常量，类型为 Schema<Conf
 async function apply(ctx, config) {
     _config = config;
     ctx.database.extend("user_sign_in", {
-        id: "string",
-        time: "string",
+        id: "string", //用户
+        user_name: "string", //用户名称
+        time: "string", //时间
         integral: "number", //积分
     }, {
         primary: "id"
@@ -41,12 +46,13 @@ async function apply(ctx, config) {
     ctx.command('signin', '签到获得积分').alias('签到') //ctx.command('签到') 定义一个指令,没有参数的,别名 "signins"
         .action(async ({ session }) => {
         let userId = session.userId; //会话对象的id
+        let user_name = ""; //用户名称
         let signin_Time = koishi_1.Time.template('yyyy-MM-dd hh:mm:ss', new Date()); //读取当前的签到时间     new Date().toISOString();
         let signin_Integral = config.integral; //定义局部变量 签到积分为: config.integral
         const User_profile = await ctx.database.get('user_sign_in', { id: session.userId }); //获取数据库中的用户ID     会话对象用户的ID:session.userId
         if (User_profile.length === 0) {
             // 主键不存在，用户在数据库中没有记录，第一次写入用户信息
-            await ctx.database.upsert('user_sign_in', [{ id: (session.userId), time: signin_Time, integral: signin_Integral }], ['id']); //signin_Integral = config.integral 每次签到获得的积分
+            await ctx.database.upsert('user_sign_in', [{ id: (session.userId), user_name: user_name, time: signin_Time, integral: signin_Integral }], ['id']); //signin_Integral = config.integral 每次签到获得的积分
             //输出日志
             logger.success(('用户' + String(session.userId) + '历史第一次签到！写入签到信息成功'));
             //签到时间. 返回不同回复,签到结束
@@ -59,7 +65,7 @@ async function apply(ctx, config) {
             //数据据库中有用户的信息,对比数据中的签到信息,写入信息
             if ((Number(signin_Time.slice(8, 10))) != Number(time.slice(8, 10))) {
                 //写入签到时间和积分
-                await ctx.database.upsert('user_sign_in', [{ id: session.userId, time: signin_Time, integral: (integral + signin_Integral) }], ['id']); //签到积分=config.integral 每次签到获得的积分
+                await ctx.database.upsert('user_sign_in', [{ id: session.userId, user_name: user_name, time: signin_Time, integral: (integral + signin_Integral) }], ['id']); //签到积分=config.integral 每次签到获得的积分
                 logger.success((String(session.userId) + '完成了一次签到！'));
                 //签到时间. 返回不同回复,签到结束
                 return (reply(signin_Time, signin_Integral, userId, config, ctx));
@@ -67,7 +73,7 @@ async function apply(ctx, config) {
             else {
                 //如果今日用户已签到,返回
                 logger.error((String(session.userId) + '签到失败！原因:该用户今日已经签到')); //输出日志
-                return (String((0, koishi_1.h)('at', { id: (session.userId) })), '&#10;', '今天已经签到过咯');
+                return (((0, koishi_1.h)('at', { id: (session.userId) })), '&#10;', '今天已经签到过咯');
             }
         }
     });
@@ -75,6 +81,18 @@ async function apply(ctx, config) {
     ctx.command('signin.v', '查看当前总积分').alias('签到.v') //创见子指令
         .action(async ({ session }) => {
         return ([(0, koishi_1.h)('at', { id: (session.userId) }), '当前总积分:', (await ctx.database.get('user_sign_in', { id: String(session.userId) }))[0]?.integral].join(''));
+    });
+    ctx.command('signin.name <name:string>', '设置用户名').alias('签到.name') //创见子指令
+        .action(async ({ session }, name) => {
+        let user_name = name; //用户名称
+        if (!(/^\s*$/.test(user_name))) {
+            await ctx.database.upsert('user_sign_in', [{ id: session.userId, user_name: user_name }], ['id']);
+            logger.error((String(session.userId) + ' 修改 用户名为: ' + user_name)); //输出日志
+            return ((0, koishi_1.h)('at', { id: (session.userId) }), ' 好的,以修改。 ' + user_name + ' 请多指教！');
+        }
+        else {
+            return ((0, koishi_1.h)('at', { id: (session.userId) }), '未输入用户名');
+        }
     });
 }
 exports.apply = apply;
